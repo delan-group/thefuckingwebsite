@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>湍流置换背景 Demo</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+    }
+    #turbCanvas {
+      position: fixed;
+      left: 0; top: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="turbCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('turbCanvas');
+    const ctx = canvas.getContext('2d');
+    let w = window.innerWidth, h = window.innerHeight;
+    canvas.width = w;
+    canvas.height = h;
+
+    // 可以换成自己的图片地址
+    const img = new Image();
+    img.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80';
+
+    // 简单的湍流扰动函数
+    function turbulence(x, y, t) {
+      let freq = 0.01;
+      let amp = 20;
+      let dx = Math.sin(y * freq + t) * amp;
+      let dy = Math.cos(x * freq + t) * amp;
+      return [x + dx, y + dy];
+    }
+
+    img.onload = function() {
+      // 预先把图片画到一个缓存canvas
+      let buffer = document.createElement('canvas');
+      buffer.width = w;
+      buffer.height = h;
+      buffer.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      function draw(t) {
+        ctx.clearRect(0, 0, w, h);
+        let imgData = buffer.getContext('2d').getImageData(0, 0, w, h);
+        let data = imgData.data;
+        // 遍历像素点进行扰动
+        let dst = ctx.createImageData(w, h);
+        let dstData = dst.data;
+        for (let y = 0; y < h; y += 2) {
+          for (let x = 0; x < w; x += 2) {
+            let [tx, ty] = turbulence(x, y, t * 0.003);
+            tx = Math.max(0, Math.min(w - 1, Math.floor(tx)));
+            ty = Math.max(0, Math.min(h - 1, Math.floor(ty)));
+            let si = (ty * w + tx) * 4;
+            let di = (y * w + x) * 4;
+            dstData[di] = data[si];
+            dstData[di + 1] = data[si + 1];
+            dstData[di + 2] = data[si + 2];
+            dstData[di + 3] = 255;
+          }
+        }
+        ctx.putImageData(dst, 0, 0);
+        requestAnimationFrame(draw);
+      }
+      draw(performance.now());
+    };
+
+    window.onresize = () => {
+      w = window.innerWidth; h = window.innerHeight;
+      canvas.width = w; canvas.height = h;
+    };
+  </script>
+</body>
+</html>
